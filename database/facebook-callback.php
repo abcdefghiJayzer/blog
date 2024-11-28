@@ -6,9 +6,7 @@ if (session_status() == PHP_SESSION_NONE) {
 require_once 'vendor\autoload.php';  // This goes up one directory to the root where the vendor folder is located
 
 
-require_once 'database\db.php';
 
-$db = new myDB();
 $fb = new Facebook\Facebook([
     'app_id' => '561554559929843',
     'app_secret' => '813dec5de5b705c6d821757346b870cf',
@@ -16,8 +14,13 @@ $fb = new Facebook\Facebook([
 ]);
 
 $helper = $fb->getRedirectLoginHelper();
-$permissions = ['email', 'public_profile']; // Permissions you're requesting from the user
+$permissions = ['email', 'public_profile']; // Permissions you're requesting from the userz
 $login_url = $helper->getLoginUrl('http://localhost/blog/', $permissions);
+
+
+if (isset($_GET['state'])) {
+    $helper->getPersistentDataHandler()->set('state', $_GET['state']);
+}
 
 if (isset($_GET['code'])) {
     try {
@@ -52,4 +55,6 @@ if (isset($_GET['code'])) {
         echo 'General error: ' . $e->getMessage();
     }
 }
+
+
 ?>
