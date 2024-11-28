@@ -1,11 +1,13 @@
 <?php
 if (session_status() == PHP_SESSION_NONE) {
-    session_start();  // Start session
+    session_start();
 }
 
-require_once 'vendor\autoload.php';  // This goes up one directory to the root where the vendor folder is located
+require_once 'vendor/autoload.php';
+require_once 'db.php';
 
-
+$data = new myDB();
+$conn = $data->getConnection();
 
 $fb = new Facebook\Facebook([
     'app_id' => '561554559929843',
@@ -14,9 +16,8 @@ $fb = new Facebook\Facebook([
 ]);
 
 $helper = $fb->getRedirectLoginHelper();
-$permissions = ['email', 'public_profile']; // Permissions you're requesting from the userz
+$permissions = ['email', 'public_profile'];
 $login_url = $helper->getLoginUrl('http://localhost/blog/', $permissions);
-
 
 if (isset($_GET['state'])) {
     $helper->getPersistentDataHandler()->set('state', $_GET['state']);
@@ -30,21 +31,44 @@ if (isset($_GET['code'])) {
             $_SESSION['access_token'] = (string)$accessToken;
             $fb->setDefaultAccessToken($_SESSION['access_token']);
 
-            // Fetch user details
             $res = $fb->get("/me?fields=id,first_name,last_name,email");
             $user = $res->getGraphUser();
-            
-            // Store user info in session
-            $_SESSION['username'] = $user['first_name'];
-            $_SESSION['facebook_user_email'] = $user['email'];
 
-            // Redirect after login
-            
-            header("Location: index.php");
-            exit();
-        } else{
-            $login_url = $helper->getLoginUrl('http://localhost/blog/', $permissions);
-            header(header: "location: " . $login_url);
+            $first_name = $user['first_name'];
+            $email = $user['email'];
+
+            $_SESSION['username'] = $first_name;
+            $_SESSION['facebook_user_email'] = $email;
+
+            // Check if the user already exists
+            $checkUserSql = "SELECT id FROM user WHERE email = ?";
+            $stmt = $conn->prepare($checkUserSql);
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $stmt->store_result();
+
+            if ($stmt->num_rows == 0) {
+                $stmt->close();
+
+                $insertSql = "INSERT INTO user (username, email) VALUES (?, ?)";
+                $insertStmt = $conn->prepare($insertSql);
+                $insertStmt->bind_param("ss", $first_name, $email);
+
+                if ($insertStmt->execute()) {
+                    header("Location: index.php");
+                    exit();
+                } else {
+                    echo "Error inserting user: " . $insertStmt->error;
+                }
+                $insertStmt->close();
+            } else {
+                header("Location: index.php");
+                exit();
+            }
+
+            $stmt->close();
+        } else {
+            header("Location: " . $login_url);
             exit();
         }
     } catch (Facebook\Exceptions\FacebookResponseException $e) {
@@ -55,6 +79,3 @@ if (isset($_GET['code'])) {
         echo 'General error: ' . $e->getMessage();
     }
 }
-
-
-?>
