@@ -86,7 +86,7 @@ require 'database/facebook-callback.php';
         class="hidden bg-neutral-900 p-4 lg:hidden shadow-lg font-semibold">
         <a
           href=""
-          class="block text-white hover:text-neutral-400 py-2">Logout</a>
+          class="block text-white hover:text-neutral-400 py-2">Logout </a>
       </div>
     </nav>
 
